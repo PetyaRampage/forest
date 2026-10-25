@@ -16,7 +16,7 @@ typedef struct Forest {
     /* int field[WIDHT*HEIGHT]; */
     /* int buffer[WIDHT*HEIGHT]; */
 } Forest;
-
+int str[WIDHT][HEIGHT];
 Forest forest;
 
 // статистика, не участвует в логике
@@ -24,7 +24,7 @@ int treeCount = 0;
 int treeGrowthCount = 0;
 int treeBurnedCount = 0;
 
-int i = 0;
+int i = -1;
 
 // формула модуля m = (a + b) % b
 // нужна потому что стандартынй в сях не умеет с отрицательными числами работать
@@ -60,7 +60,7 @@ void Update() {
 	shouldGrowth = 0;
     }
 
-    if (elapsedGrowth > RATE /* * 20 */) {
+    if (elapsedGrowth > RATE * 20) {
 	shouldGrowth = 1;
 	elapsedGrowth = 0;
     }
@@ -115,18 +115,8 @@ void Update() {
         elapsedSpawn = 0;
     }
 
-    elapsedLightning += ft;
-    if (elapsedLightning > RATE /* * 20 */) {
-        // удар молнии
-        int rnd = GetRandomValue(0, WIDHT * HEIGHT);
-        if (forest.buffer[rnd] >= 10 && forest.buffer[rnd] < 20) {
-            forest.buffer[rnd] = 9;
-        }
-        elapsedLightning = 0;
-    }
-
     elapsedFire += ft;
-    if (elapsedFire > RATE /* * 0.1 */) {
+    if (elapsedFire > RATE * 0.1 ) {
         //распространение пожара
         //1. расчет
         for (int x = 0; x < WIDHT; ++x) {
@@ -136,20 +126,32 @@ void Update() {
                     int l;
                     // up    x   y+1
                     l = x + mod(y + 1, HEIGHT) * WIDHT;
-                    if (forest.field[l] >= 10 && forest.field[l] < 20) forest.buffer[l] = 9;
+                    if (forest.field[l] >= 10 && forest.field[l] <= 20) forest.buffer[l] = 9;
                     // right x+1 y
                     l = mod(x + 1, WIDHT) + y * WIDHT;
-                    if (forest.field[l] >= 10 && forest.field[l] < 20) forest.buffer[l] = 9;
+                    if (forest.field[l] >= 10 && forest.field[l] <= 20) forest.buffer[l] = 9;
                     // down  x   y-1
                     l = x + mod(y - 1, HEIGHT) * WIDHT;
-                    if (forest.field[l] >= 10 && forest.field[l] < 20) forest.buffer[l] = 9;
+                    if (forest.field[l] >= 10 && forest.field[l] <= 20) forest.buffer[l] = 9;
                     // left  x-1 y
                     l = mod(x - 1, WIDHT) + y * WIDHT;
-                    if (forest.field[l] >= 10 && forest.field[l] < 20) forest.buffer[l] = 9;
+                    if (forest.field[l] >= 10 && forest.field[l] <= 20) forest.buffer[l] = 9;
                 }
             }
         }
         elapsedFire = 0;
+
+    }
+    
+    elapsedLightning += ft;
+    if (elapsedLightning > RATE	 * 5) {
+    /* if (i % 20 == 0 /\* * 20 *\/) { */
+        // удар молнии
+        int rnd = GetRandomValue(0, WIDHT * HEIGHT);
+        if (forest.buffer[rnd] >= 10 && forest.buffer[rnd] < 20) {
+            forest.buffer[rnd] = 9;
+        }
+        elapsedLightning = 0;
     }
 
     for (int i = 0; i < WIDHT * HEIGHT; ++i) {
@@ -159,6 +161,14 @@ void Update() {
 
 }
 
+void DebugRender(int str[WIDHT][HEIGHT]) {
+    for (int y = 0; y < HEIGHT; ++y) {
+	for (int x = 0; x < WIDHT; ++x) {
+	    int i = x + y * WIDHT;
+	    str[x][y] = forest.field[i];
+	}
+    }
+}
 
 void Render() {
     Image im = GenImageColor(WIDHT, HEIGHT, RED);
@@ -186,7 +196,8 @@ void Render() {
             case 16:
             case 17:
             case 18: c = GREEN; break;
-            case 19: c = PINK; break;
+            case 19:
+            case 20: c = PINK; break;
             }
             ImageDrawPixel(&im, i, j, c);
         }
