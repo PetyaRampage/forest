@@ -1,35 +1,36 @@
+
 #include <stdio.h>
 #include <assert.h>
 #include "raylib.h"
 
-#define TREE_SIZE     2
-#define WIDHT         800/2
-#define HEIGHT        600/2
-#define RATE          0.1
-#define RENDER_WIDTH  800
-#define RENDER_HEIGHT 600
+#define TREE_SIZE     2     // size in pixels
+#define WIDHT         800/2 // field width
+#define HEIGHT        600/2 // field height
+#define RATE          0.1   // in seconds - the smaller the faster simulation
+#define RENDER_WIDTH  800   // window width
+#define RENDER_HEIGHT 600   // window height
+
+//for using from debugger
+int str[WIDHT][HEIGHT];
 
 typedef struct Forest {
-    unsigned char field[WIDHT * HEIGHT]; // никакого эффекта, может оптимизируется?
-    unsigned char buffer[WIDHT * HEIGHT];
-
-    /* int field[WIDHT*HEIGHT]; */
-    /* int buffer[WIDHT*HEIGHT]; */
+    int field[WIDHT*HEIGHT];
+    int buffer[WIDHT*HEIGHT];
 } Forest;
-int str[WIDHT][HEIGHT];
+
 Forest forest;
 
-// статистика, не участвует в логике
+// statistics, not participate in any logic
 int treeCount = 0;
 int treeGrowthCount = 0;
 int treeBurnedCount = 0;
 
 int i = -1;
 
-// формула модуля m = (a + b) % b
-// нужна потому что стандартынй в сях не умеет с отрицательными числами работать
-// впрочем, если число будет сильно отрицательным - формула сломается,
-// но меньше -1 не подразумевается
+// module formula is m = (a + b) % b
+// needed because just % fails on negative numbers
+// however this will fail too if number is too negative
+// but values greater than -1 is expected
 int mod(int a, int b) { return (a + b) % b; }
 
 void Update() {
@@ -66,41 +67,27 @@ void Update() {
     }
     
 
-    for (int x = 0; x < WIDHT; ++x) {
-	for (int y = 0; y < HEIGHT; ++y) {
-	    int i = x + y * WIDHT;
-	    unsigned int v = forest.field[i];
-	    if (v == 0) {
-		forest.buffer[i] = v;
-	    } else if (v > 0 && v < 10) {
-		if (shouldBurn) {
-		    treeBurnedCount = 0;
-		    forest.buffer[i] = v - 1;
-		    if (forest.buffer[i] == 0) {
-			treeCount--;
-			treeBurnedCount++;
-		    }
-		} else {
-		    forest.buffer[i] = v;
-		}
-	    } else if (v > 9 && v < 20) {
-		if (shouldGrowth) {
-		    // рост деревьев
-		    forest.buffer[i] = v + 1;
-		} else {
-		    forest.buffer[i] = v;
-		}
-	    } else if (v == 20) {
-		forest.buffer[i] = v;
-	    } else {
-		assert(0 && "can't happen that v > 20 or v < 0, but somehow...");
+    for (int i = 0; i < WIDHT * HEIGHT; ++i) {
+	unsigned int v = forest.field[i];
+	assert(v >= 0 || v <= 20); // [0,20]
+
+	if (shouldBurn && v > 0 && v < 10) {
+	    treeBurnedCount = 0;
+	    forest.buffer[i] = v - 1;
+	    if (forest.buffer[i] == 0) {
+		treeCount--;
+		treeBurnedCount++;
 	    }
+	} else if (shouldGrowth && v > 9 && v < 20) {
+	    forest.buffer[i] = v + 1;
+	} else {
+	    forest.buffer[i] = v;
 	}
     }
     
     elapsedSpawn += ft;
     if (elapsedSpawn > RATE) {
-        // спавн деревьев    
+        // tree spawn    
         treeGrowthCount = 0;
 
         int count = GetRandomValue(400, 450);
@@ -117,8 +104,7 @@ void Update() {
 
     elapsedFire += ft;
     if (elapsedFire > RATE * 0.1 ) {
-        //распространение пожара
-        //1. расчет
+        //fire spread
         for (int x = 0; x < WIDHT; ++x) {
             for (int y = 0; y < HEIGHT; ++y) {
                 unsigned int v = forest.field[x + y * WIDHT];
@@ -146,7 +132,7 @@ void Update() {
     elapsedLightning += ft;
     if (elapsedLightning > RATE	 * 5) {
     /* if (i % 20 == 0 /\* * 20 *\/) { */
-        // удар молнии
+        // lightning strike
         int rnd = GetRandomValue(0, WIDHT * HEIGHT);
         if (forest.buffer[rnd] >= 10 && forest.buffer[rnd] < 20) {
             forest.buffer[rnd] = 9;
@@ -161,6 +147,7 @@ void Update() {
 
 }
 
+// for using from debugger
 void DebugRender(int str[WIDHT][HEIGHT]) {
     for (int y = 0; y < HEIGHT; ++y) {
 	for (int x = 0; x < WIDHT; ++x) {
@@ -179,10 +166,10 @@ void Render() {
             switch (forest.field[i + j * WIDHT]) {
             case 0:  c = BLACK; break;
             case 1:  
-            case 2:  c = GRAY; break;
+            case 2:  
             case 3:  
             case 4:
-            case 5:
+            case 5:  c = GRAY; break;
             case 6:
             case 7:  c = RED;   break;
             case 8:
@@ -218,10 +205,6 @@ void Render() {
 }
 
 int main() {
-    //FILE* f = fopen("stats.csv", "w");
-    //if (f == NULL) {
-    //    return 69;
-    //}
     SetTraceLogLevel(5);// log level - error
 
     InitWindow(RENDER_WIDTH, RENDER_HEIGHT, "forest");
@@ -231,12 +214,8 @@ int main() {
     }
 
     while (!WindowShouldClose()) {
-
-        //printf("Total: %6d Growth: %3d Burned: %4d\n",treeCount, treeGrowthCount, treeBurnedCount);
-        //fprintf(f,"(%6d,%3d,%4d)\n" ,treeCount, treeGrowthCount, treeBurnedCount);
         Update();
         Render();
     }
-    //fclose(f);
     return 0;
 }
